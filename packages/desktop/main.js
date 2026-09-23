@@ -92,6 +92,8 @@ const {
   SUFFIX_PATTERN,
   MAX_SUFFIX_LENGTH,
 } = require('@prompt-optimizer/core');
+const { createElectronImageInputConverter } = require('./config/image-input-normalizer');
+const convertImageInputWithElectronNativeImage = createElectronImageInputConverter(nativeImage);
 
 /**
  * 安全序列化函数，用于清理Vue响应式对象
@@ -116,37 +118,6 @@ function safeSerialize(obj) {
   } catch (error) {
     console.error('[IPC Serialization] Failed to serialize object:', error);
     throw new Error(`Failed to serialize object for IPC: ${error.message}`);
-  }
-}
-
-async function convertImageInputWithElectronNativeImage(input) {
-  try {
-    if (!input || typeof input.b64 !== 'string' || !input.b64.trim()) {
-      return null;
-    }
-
-    const mimeType = typeof input.mimeType === 'string' && input.mimeType.trim()
-      ? input.mimeType.trim()
-      : 'application/octet-stream';
-    const source = input.b64.startsWith('data:')
-      ? input.b64
-      : `data:${mimeType};base64,${input.b64}`;
-    const image = nativeImage.createFromDataURL(source);
-    if (image.isEmpty()) {
-      return null;
-    }
-
-    const pngBuffer = image.toPNG();
-    if (!pngBuffer || pngBuffer.length === 0) {
-      return null;
-    }
-
-    return {
-      b64: pngBuffer.toString('base64'),
-      mimeType: 'image/png'
-    };
-  } catch {
-    return null;
   }
 }
 
@@ -402,7 +373,7 @@ function setupPreferenceHandlers() {
 
   ipcMain.handle('preference-getDataType', async (event) => {
     try {
-      const result = preferenceService.getDataType();
+      const result = await preferenceService.getDataType();
       return createSuccessResponse(result);
     } catch (error) {
       return createErrorResponse(error);
@@ -1453,7 +1424,7 @@ function setupIPC() {
 
   ipcMain.handle('model-getDataType', async (event) => {
     try {
-      const result = modelManager.getDataType();
+      const result = await modelManager.getDataType();
       return createSuccessResponse(result);
     } catch (error) {
       return createErrorResponse(error);
@@ -1575,7 +1546,7 @@ function setupIPC() {
 
   ipcMain.handle('template-getDataType', async (event) => {
     try {
-      const result = templateManager.getDataType();
+      const result = await templateManager.getDataType();
       return createSuccessResponse(result);
     } catch (error) {
       return createErrorResponse(error);
@@ -1586,7 +1557,7 @@ function setupIPC() {
     try {
       // 清理Vue响应式对象，防止IPC序列化错误
       const safeData = safeSerialize(data);
-      const result = templateManager.validateData(safeData);
+      const result = await templateManager.validateData(safeData);
       return createSuccessResponse(result);
     } catch (error) {
       return createErrorResponse(error);
@@ -1623,7 +1594,7 @@ function setupIPC() {
 
   ipcMain.handle('template-getSupportedLanguages', async (event, template) => {
     try {
-      const result = templateManager.getSupportedLanguages(template);
+      const result = await templateManager.getSupportedLanguages(template);
       return createSuccessResponse(result);
     } catch (error) {
       return createErrorResponse(error);
@@ -1751,7 +1722,7 @@ function setupIPC() {
 
   ipcMain.handle('history-getDataType', async (event) => {
     try {
-      const result = historyManager.getDataType();
+      const result = await historyManager.getDataType();
       return createSuccessResponse(result);
     } catch (error) {
       return createErrorResponse(error);
@@ -1904,7 +1875,7 @@ function setupIPC() {
 
   ipcMain.handle('context-getDataType', async (event) => {
     try {
-      const result = contextRepo.getDataType();
+      const result = await contextRepo.getDataType();
       return createSuccessResponse(result);
     } catch (error) {
       return createErrorResponse(error);
